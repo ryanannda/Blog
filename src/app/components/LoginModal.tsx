@@ -2,60 +2,63 @@ import { useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/app/components/ui/dialog";
-import { Input } from "@/app/components/ui/input";
-import { Label } from "@/app/components/ui/label";
 import { Button } from "@/app/components/ui/button";
-import { Lock, User as UserIcon } from "lucide-react";
-import { User } from "@/app/types/blog";
+import { Input } from "@/app/components/ui/input";
+import { toast } from "sonner";
+
+const API = "http://localhost:5000/api";
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (user: User) => void;
+  onLogin: (user: any) => void;
 }
 
 export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [isRegister, setIsRegister] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
+  const handleSubmit = async () => {
     if (!username || !password) {
-      setError("Please fill in all fields");
+      toast.error("Username & password required");
       return;
     }
 
+    setLoading(true);
+
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
+      const url = isRegister ? `${API}/auth/register` : `${API}/auth/login`;
+
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        setError("Invalid username or password");
+        toast.error(data.message || "Auth failed");
         return;
       }
 
-      const user = await res.json();
+      toast.success(isRegister ? "Register success!" : "Login success!");
+      onLogin(data);
+      onClose();
 
-      // Simpan user (biar Header, Comments, dll bisa pakai)
-      localStorage.setItem("user", JSON.stringify(user));
-
-      onLogin(user);
       setUsername("");
       setPassword("");
-      onClose();
+      setIsRegister(false);
     } catch (err) {
       console.error(err);
-      setError("Cannot connect to server");
+      toast.error("Server error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -63,53 +66,59 @@ export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Lock className="size-5 text-blue-500" />
-            Login
-          </DialogTitle>
-          <DialogDescription>
-            Login as admin to manage posts or as a user to comment.
-          </DialogDescription>
+          <DialogTitle>{isRegister ? "Register" : "Login"}</DialogTitle>
+          <p className="text-sm text-gray-500">
+            {isRegister
+              ? "Create a new account to comment."
+              : "Login as admin to manage posts or as a user to comment."}
+          </p>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              type="text"
-              placeholder="admin or user"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
-          </div>
-
-          {error && (
-            <div className="text-sm text-red-500 bg-red-50 p-3 rounded-md">
-              {error}
-            </div>
-          )}
+        <div className="space-y-4 mt-4">
+          <Input
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <Input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
           <Button
-            type="submit"
-            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-blue-500 to-purple-600"
           >
-            Login
+            {loading ? "Please wait..." : isRegister ? "Register" : "Login"}
           </Button>
-        </form>
+
+          <div className="text-center text-sm text-gray-600">
+            {isRegister ? (
+              <>
+                Already have an account?{" "}
+                <button
+                  onClick={() => setIsRegister(false)}
+                  className="text-blue-600 hover:underline"
+                >
+                  Login
+                </button>
+              </>
+            ) : (
+              <>
+                Don’t have an account?{" "}
+                <button
+                  onClick={() => setIsRegister(true)}
+                  className="text-blue-600 hover:underline"
+                >
+                  Register
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -35,6 +35,40 @@ app.post("/api/auth/login", async (req, res) => {
   });
 });
 
+// REGISTER
+app.post("/api/auth/register", async (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ message: "Username & password required" });
+  }
+
+  try {
+    // cek username sudah ada
+    const existing = await pool.query(
+      "SELECT id FROM users WHERE username = $1",
+      [username],
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ message: "Username already exists" });
+    }
+
+    // sementara plain text (nanti bisa bcrypt)
+    const result = await pool.query(
+      `INSERT INTO users (username, password_hash, role)
+       VALUES ($1, $2, 'user')
+       RETURNING id, username, role`,
+      [username, password],
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to register user" });
+  }
+});
+
 /* ================= POSTS ================= */
 
 // List posts (public + admin)

@@ -20,7 +20,15 @@ export function BlogPostView({
   onBack,
   onLoginPrompt,
 }: BlogPostViewProps) {
-  const [comments, setComments] = useState<any[]>([]);
+  interface DbComment {
+    id: number;
+    username: string;
+    content: string;
+    created_at: string;
+    parent_id: number | null;
+  }
+
+  const [comments, setComments] = useState<DbComment[]>([]);
 
   /* ================= LOAD COMMENTS FROM BACKEND ================= */
 
@@ -51,7 +59,7 @@ export function BlogPostView({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: currentUser.username === "admin" ? 1 : 2,
+          user_id: currentUser.id,
           content,
           parent_id: parentId,
         }),
