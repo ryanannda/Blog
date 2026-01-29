@@ -1,0 +1,64 @@
+# ======================
+# OS / Editor
+# ======================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ======================
+# Node.js
+# ======================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ======================
+# Build Output
+# ======================
+dist/
+build/
+out/
+.cache/
+.tmp/
+
+# ======================
+# Environment Variables
+# ======================
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# ======================
+# Logs
+# ======================
+logs/
+*.log
+
+# ======================
+# Coverage
+# ======================
+coverage/
+
+# ======================
+# Package Lock (opsional)
+# ======================
+# Kalau pakai npm → jangan ignore package-lock.json
+# Kalau pakai yarn → jangan ignore yarn.lock
+# package-lock.json
+# yarn.lock
+
+# ======================
+# Misc
+# ======================
+*.zip
+*.rar
+*.7z
