@@ -23,7 +23,6 @@ app.post("/api/auth/login", async (req, res) => {
 
   const user = result.rows[0];
 
-  // sementara plain text (nanti bisa bcrypt)
   if (user.password_hash !== password) {
     return res.status(401).json({ message: "Wrong password" });
   }
@@ -44,7 +43,6 @@ app.post("/api/auth/register", async (req, res) => {
   }
 
   try {
-    // cek username sudah ada
     const existing = await pool.query(
       "SELECT id FROM users WHERE username = $1",
       [username],
@@ -54,7 +52,6 @@ app.post("/api/auth/register", async (req, res) => {
       return res.status(400).json({ message: "Username already exists" });
     }
 
-    // sementara plain text (nanti bisa bcrypt)
     const result = await pool.query(
       `INSERT INTO users (username, password_hash, role)
        VALUES ($1, $2, 'user')
@@ -143,7 +140,7 @@ app.delete("/api/posts/:id", async (req, res) => {
 
 /* ================= COMMENTS ================= */
 
-// List comments (nested nanti di frontend)
+// List comments
 app.get("/api/posts/:id/comments", async (req, res) => {
   const result = await pool.query(
     `SELECT c.*, u.username 
@@ -169,6 +166,42 @@ app.post("/api/posts/:id/comments", async (req, res) => {
   );
 
   res.json(result.rows[0]);
+});
+
+// Update Comment (TS work never touch it anymore SIXXXXX SEVENNNNNNNN)
+app.put("/api/comments/:id", async (req, res) => {
+  const { content } = req.body;
+
+  try {
+    const result = await pool.query(
+      `UPDATE comments 
+       SET content = $1
+       WHERE id = $2
+       RETURNING *`,
+      [content, req.params.id],
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("UPDATE COMMENT ERROR:", err);
+    res.status(500).json({ message: "Failed to update comment" });
+  }
+});
+
+// Delete Comments (Admin Only) (So far work, dont touch it)
+app.delete("/api/comments/:id", async (req, res) => {
+  try {
+    await pool.query(
+      `DELETE FROM comments 
+       WHERE id = $1 OR parent_id = $1`,
+      [req.params.id],
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to delete comment" });
+  }
 });
 
 app.listen(process.env.PORT, () => {

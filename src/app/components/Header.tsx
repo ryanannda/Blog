@@ -1,10 +1,10 @@
-import { PenSquare, LogIn, LogOut, Home, Settings } from 'lucide-react';
-import { Button } from '@/app/components/ui/button';
-import { User } from '@/app/types/blog';
+import { PenSquare, LogIn, LogOut, Home, Settings } from "lucide-react";
+import { Button } from "@/app/components/ui/button";
+import { User } from "@/app/types/blog";
 
 interface HeaderProps {
   currentUser: User | null;
-  currentView: 'blog' | 'admin' | 'post';
+  currentView: "blog" | "admin" | "post";
   onLoginClick: () => void;
   onLogout: () => void;
   onNavigateHome: () => void;
@@ -19,7 +19,7 @@ export function Header({
   onNavigateHome,
   onNavigateAdmin,
 }: HeaderProps) {
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = currentUser?.role === "admin";
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
@@ -28,12 +28,12 @@ export function Header({
           <div className="flex items-center gap-3">
             <PenSquare className="size-8 text-blue-500" />
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
-              MiniBlog
+              GoBlog
             </h1>
           </div>
 
           <nav className="flex items-center gap-2">
-            {currentView !== 'blog' && (
+            {currentView !== "blog" && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -45,7 +45,7 @@ export function Header({
               </Button>
             )}
 
-            {isAdmin && currentView !== 'admin' && (
+            {isAdmin && currentView !== "admin" && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -66,7 +66,7 @@ export function Header({
                   <span className="text-sm font-medium text-gray-700">
                     {currentUser.username}
                   </span>
-                  {currentUser.role === 'admin' && (
+                  {currentUser.role === "admin" && (
                     <span className="text-xs px-2 py-0.5 bg-blue-500 text-white rounded-full">
                       Admin
                     </span>

@@ -22,6 +22,6 @@ export interface Comment {
   username: string;
   content: string;
   createdAt: string;
-  parentId: string | null; // null for top-level comments, comment id for replies
+  parentId: string | null;
   replies?: Comment[];
 }

@@ -2,7 +2,14 @@ import { useState, memo } from "react";
 import { Button } from "@/app/components/ui/button";
 import { Textarea } from "@/app/components/ui/textarea";
 import { Card } from "@/app/components/ui/card";
-import { MessageCircle, Reply, Send, UserCircle } from "lucide-react";
+import {
+  Reply,
+  Send,
+  UserCircle,
+  MoreVertical,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 
 /* ================= TYPES ================= */
 
@@ -15,14 +22,22 @@ interface DbComment {
   replies?: DbComment[];
 }
 
+interface CurrentUser {
+  id: number;
+  username: string;
+  role: "admin" | "user";
+}
+
 interface CommentsProps {
   comments: DbComment[];
-  currentUser: { username: string } | null;
+  currentUser: CurrentUser | null;
   onAddComment: (content: string, parentId: string | null) => void;
+  onUpdateComment: (commentId: number, content: string) => void;
+  onDeleteComment: (commentId: number) => void;
   onLoginPrompt: () => void;
 }
 
-/* ================= COMMENT ITEM (MEMOIZED) ================= */
+/* ================= COMMENT ITEM ================= */
 
 const CommentItem = memo(
   ({
@@ -33,19 +48,49 @@ const CommentItem = memo(
     setReplyingTo,
     replyContent,
     setReplyContent,
+
+    editingId,
+    setEditingId,
+    editContent,
+    setEditContent,
+
+    openMenuId,
+    setOpenMenuId,
+
     onSubmitReply,
+    onUpdateComment,
+    onAskDelete,
     formatDate,
   }: {
     comment: DbComment;
     depth: number;
-    currentUser: { username: string } | null;
+    currentUser: CurrentUser | null;
+
     replyingTo: number | null;
     setReplyingTo: (id: number | null) => void;
     replyContent: string;
     setReplyContent: (v: string) => void;
+
+    editingId: number | null;
+    setEditingId: (id: number | null) => void;
+    editContent: string;
+    setEditContent: (v: string) => void;
+
+    openMenuId: number | null;
+    setOpenMenuId: (id: number | null) => void;
+
     onSubmitReply: (parentId: number) => void;
+    onUpdateComment: (id: number, content: string) => void;
+    onAskDelete: (comment: DbComment) => void;
+
     formatDate: (d: string) => string;
   }) => {
+    const isAdmin = currentUser?.role === "admin";
+    const isOwner = currentUser?.username === comment.username;
+
+    const canEdit = isAdmin || isOwner;
+    const canDelete = isAdmin;
+
     return (
       <div className={`${depth > 0 ? "ml-8 mt-3" : "mt-4"}`}>
         <Card
@@ -59,17 +104,97 @@ const CommentItem = memo(
             </div>
 
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-medium">{comment.username}</span>
-                <span className="text-xs text-gray-500">
-                  {formatDate(comment.created_at)}
-                </span>
+              {/* HEADER */}
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{comment.username}</span>
+                  <span className="text-xs text-gray-500">
+                    {formatDate(comment.created_at)}
+                  </span>
+                </div>
+
+                {(canEdit || canDelete) && (
+                  <div className="relative">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() =>
+                        setOpenMenuId(
+                          openMenuId === comment.id ? null : comment.id,
+                        )
+                      }
+                    >
+                      <MoreVertical className="size-4" />
+                    </Button>
+
+                    {openMenuId === comment.id && (
+                      <div className="absolute right-0 mt-1 bg-white border rounded shadow-md z-30">
+                        {canEdit && (
+                          <button
+                            className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 w-full"
+                            onClick={() => {
+                              setEditingId(comment.id);
+                              setEditContent(comment.content);
+                              setOpenMenuId(null);
+                            }}
+                          >
+                            <Pencil className="size-4" />
+                            Edit
+                          </button>
+                        )}
+
+                        {canDelete && (
+                          <button
+                            className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 w-full"
+                            onClick={() => {
+                              onAskDelete(comment);
+                              setOpenMenuId(null);
+                            }}
+                          >
+                            <Trash2 className="size-4" />
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                {comment.content}
-              </p>
+              {/* CONTENT / EDIT */}
+              {editingId === comment.id ? (
+                <div className="space-y-2">
+                  <Textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    rows={2}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        onUpdateComment(comment.id, editContent);
+                        setEditingId(null);
+                      }}
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setEditingId(null)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                  {comment.content}
+                </p>
+              )}
 
+              {/* REPLY */}
               {currentUser && (
                 <Button
                   variant="ghost"
@@ -90,7 +215,6 @@ const CommentItem = memo(
           <div className="ml-8 mt-2">
             <div className="flex gap-2">
               <Textarea
-                key={comment.id} // 🔥 prevent remount focus bug
                 placeholder={`Reply to ${comment.username}...`}
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}
@@ -128,7 +252,15 @@ const CommentItem = memo(
                 setReplyingTo={setReplyingTo}
                 replyContent={replyContent}
                 setReplyContent={setReplyContent}
+                editingId={editingId}
+                setEditingId={setEditingId}
+                editContent={editContent}
+                setEditContent={setEditContent}
+                openMenuId={openMenuId}
+                setOpenMenuId={setOpenMenuId}
                 onSubmitReply={onSubmitReply}
+                onUpdateComment={onUpdateComment}
+                onAskDelete={onAskDelete}
                 formatDate={formatDate}
               />
             ))}
@@ -141,53 +273,42 @@ const CommentItem = memo(
 
 CommentItem.displayName = "CommentItem";
 
-/* ================= MAIN COMPONENT ================= */
+/* ================= MAIN ================= */
 
 export function Comments({
   comments,
   currentUser,
   onAddComment,
+  onUpdateComment,
+  onDeleteComment,
   onLoginPrompt,
 }: CommentsProps) {
   const [newComment, setNewComment] = useState("");
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyContent, setReplyContent] = useState("");
 
-  /* ================= BUILD TREE ================= */
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState("");
 
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DbComment | null>(null);
+
+  /* BUILD TREE */
   const buildCommentTree = (list: DbComment[]): DbComment[] => {
     const map = new Map<number, DbComment>();
     const roots: DbComment[] = [];
 
-    list.forEach((c) => {
-      map.set(c.id, { ...c, replies: [] });
-    });
-
+    list.forEach((c) => map.set(c.id, { ...c, replies: [] }));
     list.forEach((c) => {
       const node = map.get(c.id)!;
-
-      if (c.parent_id === null) {
-        roots.push(node);
-      } else {
-        const parent = map.get(c.parent_id);
-        if (parent) {
-          parent.replies!.push(node);
-        }
-      }
+      if (c.parent_id === null) roots.push(node);
+      else map.get(c.parent_id!)?.replies?.push(node);
     });
 
     return roots;
   };
 
   const commentTree = buildCommentTree(comments || []);
-
-  /* ================= ACTIONS ================= */
-
-  const handleSubmitComment = () => {
-    if (!newComment.trim()) return;
-    onAddComment(newComment, null);
-    setNewComment("");
-  };
 
   const handleSubmitReply = (parentId: number) => {
     if (!replyContent.trim()) return;
@@ -196,80 +317,90 @@ export function Comments({
     setReplyContent("");
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  };
-
-  /* ================= RENDER ================= */
+  const formatDate = (d: string) => new Date(d).toLocaleString();
 
   return (
     <div className="mt-12 border-t border-gray-200 pt-8">
-      <div className="flex items-center gap-2 mb-6">
-        <MessageCircle className="size-6 text-blue-500" />
-        <h2 className="text-2xl font-bold">
-          Comments ({comments?.length || 0})
-        </h2>
-      </div>
+      <h2 className="text-2xl font-bold mb-6">
+        Comments ({comments?.length || 0})
+      </h2>
 
       {/* ADD COMMENT */}
       {currentUser ? (
-        <Card className="p-4 mb-6 bg-gradient-to-br from-blue-50 to-purple-50">
-          <div className="flex items-start gap-3">
-            <div className="size-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium">
-              {currentUser.username.charAt(0).toUpperCase()}
-            </div>
-
-            <div className="flex-1 space-y-3">
-              <Textarea
-                placeholder="Share your thoughts..."
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                rows={3}
-              />
-              <Button
-                onClick={handleSubmitComment}
-                disabled={!newComment.trim()}
-                className="gap-2 bg-gradient-to-r from-blue-500 to-purple-600"
-              >
-                <Send className="size-4" />
-                Post Comment
-              </Button>
-            </div>
-          </div>
+        <Card className="p-4 mb-6">
+          <Textarea
+            placeholder="Share your thoughts..."
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            rows={3}
+          />
+          <Button
+            className="mt-2"
+            onClick={() => {
+              if (!newComment.trim()) return;
+              onAddComment(newComment, null);
+              setNewComment("");
+            }}
+          >
+            <Send className="size-4 mr-2" />
+            Post Comment
+          </Button>
         </Card>
       ) : (
-        <Card className="p-6 text-center bg-gray-50 mb-6">
-          <UserCircle className="size-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-600 mb-4">Sign in to join the discussion</p>
-          <Button onClick={onLoginPrompt} variant="outline">
-            Login to Comment
-          </Button>
+        <Card className="p-6 text-center">
+          <UserCircle className="size-12 mx-auto mb-3" />
+          <Button onClick={onLoginPrompt}>Login to Comment</Button>
         </Card>
       )}
 
       {/* LIST */}
-      {commentTree.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          <MessageCircle className="size-12 text-gray-300 mx-auto mb-3" />
-          <p>No comments yet. Be the first!</p>
-        </div>
-      ) : (
-        <div>
-          {commentTree.map((comment) => (
-            <CommentItem
-              key={comment.id}
-              comment={comment}
-              depth={0}
-              currentUser={currentUser}
-              replyingTo={replyingTo}
-              setReplyingTo={setReplyingTo}
-              replyContent={replyContent}
-              setReplyContent={setReplyContent}
-              onSubmitReply={handleSubmitReply}
-              formatDate={formatDate}
-            />
-          ))}
+      {commentTree.map((comment) => (
+        <CommentItem
+          key={comment.id}
+          comment={comment}
+          depth={0}
+          currentUser={currentUser}
+          replyingTo={replyingTo}
+          setReplyingTo={setReplyingTo}
+          replyContent={replyContent}
+          setReplyContent={setReplyContent}
+          editingId={editingId}
+          setEditingId={setEditingId}
+          editContent={editContent}
+          setEditContent={setEditContent}
+          openMenuId={openMenuId}
+          setOpenMenuId={setOpenMenuId}
+          onSubmitReply={handleSubmitReply}
+          onUpdateComment={onUpdateComment}
+          onAskDelete={setDeleteTarget}
+          formatDate={formatDate}
+        />
+      ))}
+
+      {/* DELETE MODAL */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <Card className="p-6 max-w-md w-full">
+            <h3 className="text-lg font-bold mb-2">Delete Comment</h3>
+            <p className="mb-4">
+              Are you sure you want to delete the comment from{" "}
+              <b>"{deleteTarget.username}"</b>?
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  onDeleteComment(deleteTarget.id);
+                  setDeleteTarget(null);
+                }}
+              >
+                Delete
+              </Button>
+            </div>
+          </Card>
         </div>
       )}
     </div>

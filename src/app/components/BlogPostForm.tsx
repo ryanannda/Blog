@@ -1,28 +1,28 @@
-import { useState, useEffect, useRef } from 'react';
-import { BlogPost } from '@/app/types/blog';
-import { Input } from '@/app/components/ui/input';
-import { Label } from '@/app/components/ui/label';
-import { Textarea } from '@/app/components/ui/textarea';
-import { Button } from '@/app/components/ui/button';
-import { Card } from '@/app/components/ui/card';
-import { Image, Info } from 'lucide-react';
+import { useState, useEffect, useRef } from "react";
+import { BlogPost } from "@/app/types/blog";
+import { Input } from "@/app/components/ui/input";
+import { Label } from "@/app/components/ui/label";
+import { Textarea } from "@/app/components/ui/textarea";
+import { Button } from "@/app/components/ui/button";
+import { Card } from "@/app/components/ui/card";
+import { Image, Info } from "lucide-react";
 
 interface BlogPostFormProps {
   post?: BlogPost;
-  onSave: (post: Omit<BlogPost, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onSave: (post: Omit<BlogPost, "id" | "createdAt" | "updatedAt">) => void;
   onCancel: () => void;
 }
 
 export function BlogPostForm({ post, onSave, onCancel }: BlogPostFormProps) {
   const [formData, setFormData] = useState({
-    title: '',
-    excerpt: '',
-    content: '',
-    author: '',
-    category: '',
-    imageUrl: '',
+    title: "",
+    excerpt: "",
+    content: "",
+    author: "",
+    category: "",
+    imageUrl: "",
   });
-  const [imageUrlInput, setImageUrlInput] = useState('');
+  const [imageUrlInput, setImageUrlInput] = useState("");
   const [showImageHelper, setShowImageHelper] = useState(false);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -45,7 +45,7 @@ export function BlogPostForm({ post, onSave, onCancel }: BlogPostFormProps) {
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -60,15 +60,14 @@ export function BlogPostForm({ post, onSave, onCancel }: BlogPostFormProps) {
     const cursorPosition = textarea.selectionStart;
     const textBefore = formData.content.substring(0, cursorPosition);
     const textAfter = formData.content.substring(cursorPosition);
-    
+
     const imageMarkdown = `![Image](${imageUrlInput})`;
     const newContent = textBefore + imageMarkdown + textAfter;
 
     setFormData((prev) => ({ ...prev, content: newContent }));
-    setImageUrlInput('');
+    setImageUrlInput("");
     setShowImageHelper(false);
 
-    // Focus back on textarea
     setTimeout(() => {
       textarea.focus();
       const newPosition = cursorPosition + imageMarkdown.length;
@@ -79,7 +78,7 @@ export function BlogPostForm({ post, onSave, onCancel }: BlogPostFormProps) {
   return (
     <Card className="p-6 sm:p-8">
       <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
-        {post ? 'Edit Post' : 'Create New Post'}
+        {post ? "Edit Post" : "Create New Post"}
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -164,7 +163,10 @@ export function BlogPostForm({ post, onSave, onCancel }: BlogPostFormProps) {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3 mb-2">
                 <div className="flex items-start gap-2 text-sm text-blue-700">
                   <Info className="size-4 mt-0.5 flex-shrink-0" />
-                  <p>Enter an image URL and click "Insert" to add it to your content at the cursor position.</p>
+                  <p>
+                    Enter an image URL and click "Insert" to add it to your
+                    content at the cursor position.
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <Input
@@ -172,7 +174,7 @@ export function BlogPostForm({ post, onSave, onCancel }: BlogPostFormProps) {
                     value={imageUrlInput}
                     onChange={(e) => setImageUrlInput(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === "Enter") {
                         e.preventDefault();
                         handleInsertImage();
                       }
@@ -188,7 +190,8 @@ export function BlogPostForm({ post, onSave, onCancel }: BlogPostFormProps) {
                   </Button>
                 </div>
                 <p className="text-xs text-gray-600">
-                  Images will appear as: <code className="bg-white px-1 rounded">![Image](url)</code>
+                  Images will appear as:{" "}
+                  <code className="bg-white px-1 rounded">![Image](url)</code>
                 </p>
               </div>
             )}
@@ -211,7 +214,7 @@ export function BlogPostForm({ post, onSave, onCancel }: BlogPostFormProps) {
             type="submit"
             className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
           >
-            {post ? 'Update Post' : 'Create Post'}
+            {post ? "Update Post" : "Create Post"}
           </Button>
           <Button
             type="button"

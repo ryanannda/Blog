@@ -72,6 +72,46 @@ export function BlogPostView({
     }
   };
 
+  const handleUpdateComment = async (commentId: number, content: string) => {
+    console.log("UPDATE COMMENT FRONTEND:", commentId, content);
+
+    const url = `http://localhost:5000/api/comments/${commentId}`;
+    console.log("PUT URL:", url);
+
+    try {
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+
+      console.log("PUT STATUS:", res.status);
+
+      await loadComments();
+    } catch (err) {
+      console.error("Failed to update comment", err);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    console.log("DELETE COMMENT FRONTEND:", commentId);
+
+    const url = `http://localhost:5000/api/comments/${commentId}`;
+    console.log("DELETE URL:", url);
+
+    try {
+      const res = await fetch(url, {
+        method: "DELETE",
+      });
+
+      console.log("DELETE STATUS:", res.status);
+
+      await loadComments();
+    } catch (err) {
+      console.error("Failed to delete comment", err);
+    }
+  };
+
   /* ================= UTILS ================= */
 
   const formatDate = (dateString: string) => {
@@ -214,6 +254,8 @@ export function BlogPostView({
               comments={comments}
               currentUser={currentUser}
               onAddComment={handleAddComment}
+              onUpdateComment={handleUpdateComment}
+              onDeleteComment={handleDeleteComment}
               onLoginPrompt={onLoginPrompt}
             />
           </div>
