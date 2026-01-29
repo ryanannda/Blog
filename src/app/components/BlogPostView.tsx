@@ -1,30 +1,71 @@
-import { BlogPost, Comment, User } from "@/app/types/blog";
+import { BlogPost, User } from "@/app/types/blog";
 import { Button } from "@/app/components/ui/button";
 import { ArrowLeft, Calendar, User as UserIcon, Tag } from "lucide-react";
 import { ImageWithFallback } from "@/app/components/Image/ImageWithFallback";
 import { Comments } from "@/app/components/Comments";
+import { useEffect, useState } from "react";
 
 interface BlogPostViewProps {
   post: BlogPost;
-  comments: Comment[];
   currentUser: User | null;
   onBack: () => void;
-  onAddComment: (
-    postId: string,
-    content: string,
-    parentId: string | null,
-  ) => void;
   onLoginPrompt: () => void;
 }
 
+const API = "http://localhost:5000/api";
+
 export function BlogPostView({
   post,
-  comments,
   currentUser,
   onBack,
-  onAddComment,
   onLoginPrompt,
 }: BlogPostViewProps) {
+  const [comments, setComments] = useState<any[]>([]);
+
+  /* ================= LOAD COMMENTS FROM BACKEND ================= */
+
+  const loadComments = async () => {
+    try {
+      const res = await fetch(`${API}/posts/${post.id}/comments`);
+      const data = await res.json();
+      setComments(data);
+    } catch (err) {
+      console.error("Failed to load comments", err);
+    }
+  };
+
+  useEffect(() => {
+    loadComments();
+  }, [post.id]);
+
+  /* ================= ADD COMMENT / REPLY ================= */
+
+  const handleAddComment = async (content: string, parentId: string | null) => {
+    if (!currentUser) {
+      onLoginPrompt();
+      return;
+    }
+
+    try {
+      await fetch(`${API}/posts/${post.id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: currentUser.username === "admin" ? 1 : 2,
+          content,
+          parent_id: parentId,
+        }),
+      });
+
+      await loadComments();
+    } catch (err) {
+      console.error("Failed to add comment", err);
+      alert("Failed to add comment");
+    }
+  };
+
+  /* ================= UTILS ================= */
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -42,13 +83,11 @@ export function BlogPostView({
       alt?: string;
     }> = [];
 
-    // Split by image markdown pattern: ![alt](url)
     const imagePattern = /!\[([^\]]*)\]\(([^)]+)\)/g;
     let lastIndex = 0;
     let match;
 
     while ((match = imagePattern.exec(content)) !== null) {
-      // Add text before the image
       if (match.index > lastIndex) {
         const textBefore = content.substring(lastIndex, match.index);
         if (textBefore.trim()) {
@@ -56,17 +95,15 @@ export function BlogPostView({
         }
       }
 
-      // Add the image
       parts.push({
         type: "image",
-        content: match[2], // URL
-        alt: match[1] || "Content image", // Alt text
+        content: match[2],
+        alt: match[1] || "Content image",
       });
 
       lastIndex = match.index + match[0].length;
     }
 
-    // Add remaining text after the last image
     if (lastIndex < content.length) {
       const remainingText = content.substring(lastIndex);
       if (remainingText.trim()) {
@@ -78,7 +115,8 @@ export function BlogPostView({
   };
 
   const contentParts = parseContent(post.content);
-  const postComments = comments.filter((c) => c.postId === post.id);
+
+  /* ================= RENDER ================= */
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -163,11 +201,11 @@ export function BlogPostView({
               })}
             </div>
 
+            {/* COMMENTS (FROM POSTGRESQL) */}
             <Comments
-              postId={post.id}
-              comments={postComments}
+              comments={comments}
               currentUser={currentUser}
-              onAddComment={onAddComment}
+              onAddComment={handleAddComment}
               onLoginPrompt={onLoginPrompt}
             />
           </div>

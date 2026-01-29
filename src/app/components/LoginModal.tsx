@@ -1,16 +1,16 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/app/components/ui/dialog';
-import { Input } from '@/app/components/ui/input';
-import { Label } from '@/app/components/ui/label';
-import { Button } from '@/app/components/ui/button';
-import { Lock, User as UserIcon } from 'lucide-react';
-import { User } from '@/app/types/blog';
+} from "@/app/components/ui/dialog";
+import { Input } from "@/app/components/ui/input";
+import { Label } from "@/app/components/ui/label";
+import { Button } from "@/app/components/ui/button";
+import { Lock, User as UserIcon } from "lucide-react";
+import { User } from "@/app/types/blog";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -19,35 +19,43 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (!username || !password) {
-      setError('Please fill in all fields');
+      setError("Please fill in all fields");
       return;
     }
 
-    // Simple authentication - in real app, this would be handled by backend
-    let user: User | null = null;
-    
-    if (username === 'admin' && password === 'admin123') {
-      user = { username: 'admin', role: 'admin' };
-    } else if (username === 'user' && password === 'user123') {
-      user = { username: 'user', role: 'user' };
-    }
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
 
-    if (user) {
+      if (!res.ok) {
+        setError("Invalid username or password");
+        return;
+      }
+
+      const user = await res.json();
+
+      // Simpan user (biar Header, Comments, dll bisa pakai)
+      localStorage.setItem("user", JSON.stringify(user));
+
       onLogin(user);
-      setUsername('');
-      setPassword('');
+      setUsername("");
+      setPassword("");
       onClose();
-    } else {
-      setError('Invalid credentials. Check the demo accounts below.');
+    } catch (err) {
+      console.error(err);
+      setError("Cannot connect to server");
     }
   };
 
@@ -94,28 +102,6 @@ export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
               {error}
             </div>
           )}
-
-          <div className="space-y-3">
-            <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-700">
-              <div className="flex items-center gap-2 font-medium mb-2">
-                <Lock className="size-4" />
-                Admin Account
-              </div>
-              <p>Username: <span className="font-mono">admin</span></p>
-              <p>Password: <span className="font-mono">admin123</span></p>
-              <p className="text-xs mt-1 text-blue-600">Can manage all posts</p>
-            </div>
-
-            <div className="bg-purple-50 p-3 rounded-md text-sm text-purple-700">
-              <div className="flex items-center gap-2 font-medium mb-2">
-                <UserIcon className="size-4" />
-                User Account
-              </div>
-              <p>Username: <span className="font-mono">user</span></p>
-              <p>Password: <span className="font-mono">user123</span></p>
-              <p className="text-xs mt-1 text-purple-600">Can comment on posts</p>
-            </div>
-          </div>
 
           <Button
             type="submit"

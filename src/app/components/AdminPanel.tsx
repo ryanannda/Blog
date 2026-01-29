@@ -29,7 +29,7 @@ interface AdminPanelProps {
   onDeletePost: (id: string) => void;
 }
 
-export function AdminPanel({
+export default function AdminPanel({
   posts,
   onCreatePost,
   onUpdatePost,
@@ -73,7 +73,6 @@ export function AdminPanel({
     });
   };
 
-  // Filter posts based on search query
   const filteredPosts = posts.filter((post) => {
     const query = searchQuery.toLowerCase();
     return (
@@ -106,6 +105,7 @@ export function AdminPanel({
           </h2>
           <p className="text-gray-600 mt-1">Manage your blog posts</p>
         </div>
+
         <Button
           onClick={() => setIsCreating(true)}
           className="gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
@@ -122,50 +122,27 @@ export function AdminPanel({
             onChange={setSearchQuery}
             placeholder="Search posts by title, content, author, or category..."
           />
-          {searchQuery && (
-            <p className="text-sm text-gray-600 mt-2">
-              Found {filteredPosts.length}{" "}
-              {filteredPosts.length === 1 ? "post" : "posts"} matching "
-              {searchQuery}"
-            </p>
-          )}
         </div>
       )}
 
       {posts.length === 0 ? (
         <Card className="p-12 text-center">
-          <div className="bg-gradient-to-br from-blue-100 to-purple-100 rounded-full p-6 inline-block mb-4">
-            <FileText className="size-12 text-blue-500" />
-          </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">No Posts Yet</h3>
+          <FileText className="size-12 text-gray-300 mx-auto mb-3" />
+          <h3 className="text-xl font-bold mb-2">No Posts Yet</h3>
           <p className="text-gray-600 mb-6">
             Create your first blog post to get started
           </p>
-          <Button
-            onClick={() => setIsCreating(true)}
-            className="gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-          >
-            <Plus className="size-4" />
+          <Button onClick={() => setIsCreating(true)}>
+            <Plus className="size-4 mr-2" />
             Create First Post
           </Button>
-        </Card>
-      ) : filteredPosts.length === 0 ? (
-        <Card className="p-12 text-center">
-          <FileText className="size-12 text-gray-300 mx-auto mb-3" />
-          <h3 className="text-xl font-bold text-gray-900 mb-2">
-            No posts found
-          </h3>
-          <p className="text-gray-600">Try adjusting your search terms</p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {filteredPosts.map((post) => (
-            <Card
-              key={post.id}
-              className="p-4 hover:shadow-lg transition-shadow"
-            >
+            <Card key={post.id} className="p-4">
               <div className="flex flex-col sm:flex-row gap-4">
-                <div className="sm:w-48 aspect-video sm:aspect-square overflow-hidden rounded-lg bg-gradient-to-br from-blue-100 to-purple-100 flex-shrink-0">
+                <div className="sm:w-48 aspect-video sm:aspect-square overflow-hidden rounded-lg">
                   <ImageWithFallback
                     src={post.imageUrl}
                     alt={post.title}
@@ -173,46 +150,37 @@ export function AdminPanel({
                   />
                 </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-2">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-bold text-gray-900 truncate">
+                <div className="flex-1">
+                  <div className="flex justify-between mb-2">
+                    <div>
+                      <h3 className="text-lg font-bold truncate">
                         {post.title}
                       </h3>
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 mt-1">
-                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
-                          {post.category}
-                        </span>
-                        <span>•</span>
-                        <span>{post.author}</span>
-                        <span>•</span>
-                        <span>{formatDate(post.createdAt)}</span>
-                      </div>
+                      <p className="text-sm text-gray-600">
+                        {post.author} • {formatDate(post.createdAt)}
+                      </p>
                     </div>
 
-                    <div className="flex gap-2 flex-shrink-0">
+                    <div className="flex gap-2">
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => setEditingPost(post)}
-                        className="gap-1"
                       >
                         <Edit2 className="size-4" />
-                        <span className="hidden sm:inline">Edit</span>
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
+                        className="text-red-600"
                         onClick={() => setDeletingPost(post)}
-                        className="gap-1 text-red-600 hover:text-red-700 hover:border-red-300"
                       >
                         <Trash2 className="size-4" />
-                        <span className="hidden sm:inline">Delete</span>
                       </Button>
                     </div>
                   </div>
 
-                  <p className="text-gray-600 text-sm line-clamp-2">
+                  <p className="text-sm text-gray-600 line-clamp-2">
                     {post.excerpt}
                   </p>
                 </div>
@@ -230,8 +198,7 @@ export function AdminPanel({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Post</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deletingPost?.title}"? This
-              action cannot be undone.
+              Are you sure you want to delete "{deletingPost?.title}"?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

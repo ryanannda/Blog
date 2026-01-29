@@ -10,10 +10,11 @@ export interface BlogPost {
   updatedAt: string;
 }
 
-export interface User {
+export type User = {
+  id: number;
   username: string;
-  role: 'admin' | 'user';
-}
+  role: "admin" | "user";
+};
 
 export interface Comment {
   id: string;
