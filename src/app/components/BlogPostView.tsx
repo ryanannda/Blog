@@ -1,6 +1,6 @@
 import { BlogPost, User } from "@/app/types/blog";
 import { Button } from "@/app/components/ui/button";
-import { ArrowLeft, Calendar, User as UserIcon, Tag } from "lucide-react";
+import { ArrowLeft, Calendar, User as UserIcon, Tag, X } from "lucide-react";
 import { ImageWithFallback } from "@/app/components/Image/ImageWithFallback";
 import { Comments } from "@/app/components/Comments";
 import { useEffect, useState } from "react";
@@ -30,7 +30,10 @@ export function BlogPostView({
 
   const [comments, setComments] = useState<DbComment[]>([]);
 
-  /* ================= LOAD COMMENTS FROM BACKEND ================= */
+  // 🔥 IMAGE PREVIEW MODAL STATE
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  /* ================= LOAD COMMENTS ================= */
 
   const loadComments = async () => {
     try {
@@ -46,7 +49,7 @@ export function BlogPostView({
     loadComments();
   }, [post.id]);
 
-  /* ================= ADD COMMENT / REPLY ================= */
+  /* ================= COMMENTS HANDLERS ================= */
 
   const handleAddComment = async (content: string, parentId: string | null) => {
     if (!currentUser) {
@@ -73,42 +76,30 @@ export function BlogPostView({
   };
 
   const handleUpdateComment = async (commentId: number, content: string) => {
-    console.log("UPDATE COMMENT FRONTEND:", commentId, content);
-
-    const url = `http://localhost:5000/api/comments/${commentId}`;
-    console.log("PUT URL:", url);
-
     try {
-      const res = await fetch(url, {
+      await fetch(`${API}/comments/${commentId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
       });
 
-      console.log("PUT STATUS:", res.status);
-
       await loadComments();
     } catch (err) {
       console.error("Failed to update comment", err);
+      alert("Failed to update comment");
     }
   };
 
   const handleDeleteComment = async (commentId: number) => {
-    console.log("DELETE COMMENT FRONTEND:", commentId);
-
-    const url = `http://localhost:5000/api/comments/${commentId}`;
-    console.log("DELETE URL:", url);
-
     try {
-      const res = await fetch(url, {
+      await fetch(`${API}/comments/${commentId}`, {
         method: "DELETE",
       });
-
-      console.log("DELETE STATUS:", res.status);
 
       await loadComments();
     } catch (err) {
       console.error("Failed to delete comment", err);
+      alert("Failed to delete comment");
     }
   };
 
@@ -123,7 +114,7 @@ export function BlogPostView({
     });
   };
 
-  // Parse content to extract images and text
+  // Parse markdown image
   const parseContent = (content: string) => {
     const parts: Array<{
       type: "text" | "image";
@@ -179,15 +170,18 @@ export function BlogPostView({
         </Button>
 
         <article className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          {/* HERO IMAGE */}
           <div className="aspect-video sm:aspect-[21/9] overflow-hidden bg-gradient-to-br from-blue-100 to-purple-100">
             <ImageWithFallback
               src={post.imageUrl}
               alt={post.title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover cursor-pointer"
+              onClick={() => setPreviewImage(post.imageUrl)}
             />
           </div>
 
           <div className="p-6 sm:p-10">
+            {/* META */}
             <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-6">
               <div className="flex items-center gap-2">
                 <div className="size-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium">
@@ -211,6 +205,7 @@ export function BlogPostView({
               </div>
             </div>
 
+            {/* TITLE */}
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
               {post.title}
             </h1>
@@ -219,18 +214,21 @@ export function BlogPostView({
               {post.excerpt}
             </p>
 
+            {/* CONTENT */}
             <div className="prose prose-lg max-w-none">
               {contentParts.map((part, index) => {
                 if (part.type === "image") {
                   return (
                     <div
                       key={index}
-                      className="my-8 rounded-xl overflow-hidden shadow-md"
+                      className="my-8 rounded-xl overflow-hidden shadow-md cursor-pointer"
+                      onClick={() => setPreviewImage(part.content)}
                     >
-                      <ImageWithFallback
+                      {/* 🔥 POTONG KE BAWAH */}
+                      <img
                         src={part.content}
-                        alt={part.alt || "Content image"}
-                        className="w-full h-auto"
+                        alt={part.alt}
+                        className="w-full object-cover max-h-[420px]"
                       />
                     </div>
                   );
@@ -249,7 +247,7 @@ export function BlogPostView({
               })}
             </div>
 
-            {/* COMMENTS (FROM POSTGRESQL) */}
+            {/* COMMENTS */}
             <Comments
               comments={comments}
               currentUser={currentUser}
@@ -261,6 +259,34 @@ export function BlogPostView({
           </div>
         </article>
       </div>
+
+      {/* ================= IMAGE PREVIEW MODAL ================= */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          onClick={() => setPreviewImage(null)} // klik luar = close
+        >
+          <div
+            className="relative bg-white rounded-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()} // cegah close saat klik gambar
+          >
+            {/* CLOSE BUTTON */}
+            <button
+              className="absolute top-3 right-3 z-10 bg-white rounded-full p-2 shadow"
+              onClick={() => setPreviewImage(null)}
+            >
+              <X className="size-5" />
+            </button>
+
+            {/* FULL IMAGE */}
+            <img
+              src={previewImage}
+              alt="Preview"
+              className="w-full h-auto rounded-xl"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
