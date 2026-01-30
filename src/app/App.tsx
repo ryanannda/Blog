@@ -5,6 +5,7 @@ import { LoginModal } from "@/app/components/LoginModal";
 import { BlogList } from "@/app/components/BlogList";
 import { BlogPostView } from "@/app/components/BlogPostView";
 import AdminPanel from "@/app/components/AdminPanel";
+import { Footer } from "@/app/components/Footer";
 import { Toaster } from "@/app/components/ui/sonner";
 import { toast } from "sonner";
 
@@ -212,6 +213,9 @@ export default function App() {
       />
 
       <Toaster position="bottom-right" />
+
+      {/* FOOTER (GLOBAL) */}
+      <Footer />
     </div>
   );
 }
