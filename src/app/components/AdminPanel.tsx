@@ -68,25 +68,27 @@ export default function AdminPanel({
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       year: "numeric",
-      month: "short",
+      month: "long",
       day: "numeric",
     });
   };
 
   const filteredPosts = posts.filter((post) => {
-    const query = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase();
     return (
-      post.title.toLowerCase().includes(query) ||
-      post.excerpt.toLowerCase().includes(query) ||
-      post.content.toLowerCase().includes(query) ||
-      post.author.toLowerCase().includes(query) ||
-      post.category.toLowerCase().includes(query)
+      post.title.toLowerCase().includes(q) ||
+      post.excerpt.toLowerCase().includes(q) ||
+      post.content.toLowerCase().includes(q) ||
+      post.author.toLowerCase().includes(q) ||
+      post.category.toLowerCase().includes(q)
     );
   });
 
+  /* ================= FORM MODE ================= */
+
   if (isCreating || editingPost) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-8">
         <BlogPostForm
           post={editingPost || undefined}
           onSave={handleSave}
@@ -96,11 +98,14 @@ export default function AdminPanel({
     );
   }
 
+  /* ================= LIST MODE ================= */
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+          <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
             Admin Panel
           </h2>
           <p className="text-gray-600 mt-1">Manage your blog posts</p>
@@ -108,15 +113,16 @@ export default function AdminPanel({
 
         <Button
           onClick={() => setIsCreating(true)}
-          className="gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+          className="gap-2 bg-gradient-to-r from-blue-500 to-purple-600"
         >
           <Plus className="size-4" />
           New Post
         </Button>
       </div>
 
+      {/* SEARCH */}
       {posts.length > 0 && (
-        <div className="mb-6">
+        <div className="mb-8 max-w-xl">
           <SearchBar
             value={searchQuery}
             onChange={setSearchQuery}
@@ -125,9 +131,10 @@ export default function AdminPanel({
         </div>
       )}
 
+      {/* EMPTY */}
       {posts.length === 0 ? (
         <Card className="p-12 text-center">
-          <FileText className="size-12 text-gray-300 mx-auto mb-3" />
+          <FileText className="size-12 text-gray-300 mx-auto mb-4" />
           <h3 className="text-xl font-bold mb-2">No Posts Yet</h3>
           <p className="text-gray-600 mb-6">
             Create your first blog post to get started
@@ -138,51 +145,65 @@ export default function AdminPanel({
           </Button>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        /* === SAME GRID STYLE AS USER PAGE === */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredPosts.map((post) => (
-            <Card key={post.id} className="p-4">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="sm:w-48 aspect-video sm:aspect-square overflow-hidden rounded-lg">
-                  <ImageWithFallback
-                    src={post.imageUrl}
-                    alt={post.title}
-                    className="w-full h-full object-cover"
-                  />
+            <Card
+              key={post.id}
+              className="overflow-hidden hover:shadow-lg transition-shadow"
+            >
+              {/* IMAGE */}
+              <div className="aspect-video overflow-hidden">
+                <ImageWithFallback
+                  src={post.imageUrl}
+                  alt={post.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+
+              {/* CONTENT */}
+              <div className="p-6 flex flex-col h-full">
+                <div className="mb-2">
+                  <span className="inline-block text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full">
+                    {post.category}
+                  </span>
                 </div>
 
-                <div className="flex-1">
-                  <div className="flex justify-between mb-2">
-                    <div>
-                      <h3 className="text-lg font-bold truncate">
-                        {post.title}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {post.author} • {formatDate(post.createdAt)}
-                      </p>
-                    </div>
+                <h3 className="text-lg font-bold mb-2 line-clamp-2">
+                  {post.title}
+                </h3>
 
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setEditingPost(post)}
-                      >
-                        <Edit2 className="size-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-red-600"
-                        onClick={() => setDeletingPost(post)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
+                <p className="text-sm text-gray-600 mb-4 line-clamp-3">
+                  {post.excerpt}
+                </p>
+
+                <div className="mt-auto">
+                  <div className="text-xs text-gray-500 mb-4">
+                    {post.author} • {formatDate(post.createdAt)}
                   </div>
 
-                  <p className="text-sm text-gray-600 line-clamp-2">
-                    {post.excerpt}
-                  </p>
+                  {/* ADMIN ACTIONS (REPLACE READ) */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => setEditingPost(post)}
+                    >
+                      <Edit2 className="size-4 mr-2" />
+                      Edit
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+                      onClick={() => setDeletingPost(post)}
+                    >
+                      <Trash2 className="size-4 mr-2" />
+                      Delete
+                    </Button>
+                  </div>
                 </div>
               </div>
             </Card>
@@ -190,6 +211,7 @@ export default function AdminPanel({
         </div>
       )}
 
+      {/* DELETE MODAL */}
       <AlertDialog
         open={!!deletingPost}
         onOpenChange={() => setDeletingPost(null)}
@@ -198,7 +220,7 @@ export default function AdminPanel({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Post</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deletingPost?.title}"?
+              Are you sure you want to delete <b>"{deletingPost?.title}"</b>?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
