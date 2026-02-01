@@ -1,4 +1,4 @@
-import { useState, memo } from "react";
+import React, { useState, memo, useMemo } from "react";
 import { Button } from "@/app/components/ui/button";
 import { Textarea } from "@/app/components/ui/textarea";
 import { Card } from "@/app/components/ui/card";
@@ -9,6 +9,7 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
+  MessageCircle,
 } from "lucide-react";
 
 /* ================= TYPES ================= */
@@ -29,7 +30,7 @@ interface CurrentUser {
 }
 
 interface CommentsProps {
-  comments: DbComment[];
+  comments: DbComment[]; // flat array from backend
   currentUser: CurrentUser | null;
   onAddComment: (content: string, parentId: string | null) => void;
   onUpdateComment: (commentId: number, content: string) => void;
@@ -37,7 +38,7 @@ interface CommentsProps {
   onLoginPrompt: () => void;
 }
 
-/* ================= COMMENT ITEM ================= */
+/* ================= COMMENT ITEM (memoized) ================= */
 
 const CommentItem = memo(
   ({
@@ -48,15 +49,12 @@ const CommentItem = memo(
     setReplyingTo,
     replyContent,
     setReplyContent,
-
     editingId,
     setEditingId,
     editContent,
     setEditContent,
-
     openMenuId,
     setOpenMenuId,
-
     onSubmitReply,
     onUpdateComment,
     onAskDelete,
@@ -65,29 +63,23 @@ const CommentItem = memo(
     comment: DbComment;
     depth: number;
     currentUser: CurrentUser | null;
-
     replyingTo: number | null;
     setReplyingTo: (id: number | null) => void;
     replyContent: string;
     setReplyContent: (v: string) => void;
-
     editingId: number | null;
     setEditingId: (id: number | null) => void;
     editContent: string;
     setEditContent: (v: string) => void;
-
     openMenuId: number | null;
     setOpenMenuId: (id: number | null) => void;
-
     onSubmitReply: (parentId: number) => void;
     onUpdateComment: (id: number, content: string) => void;
     onAskDelete: (comment: DbComment) => void;
-
     formatDate: (d: string) => string;
   }) => {
     const isAdmin = currentUser?.role === "admin";
     const isOwner = currentUser?.username === comment.username;
-
     const canEdit = isAdmin || isOwner;
     const canDelete = isAdmin;
 
@@ -104,7 +96,7 @@ const CommentItem = memo(
             </div>
 
             <div className="flex-1">
-              {/* HEADER */}
+              {/* header */}
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{comment.username}</span>
@@ -128,7 +120,7 @@ const CommentItem = memo(
                     </Button>
 
                     {openMenuId === comment.id && (
-                      <div className="absolute right-0 mt-1 bg-white border rounded shadow-md z-30">
+                      <div className="absolute right-0 mt-2 bg-white border rounded shadow-md z-30 w-40">
                         {canEdit && (
                           <button
                             className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 w-full"
@@ -161,7 +153,7 @@ const CommentItem = memo(
                 )}
               </div>
 
-              {/* CONTENT / EDIT */}
+              {/* content / edit */}
               {editingId === comment.id ? (
                 <div className="space-y-2">
                   <Textarea
@@ -194,7 +186,7 @@ const CommentItem = memo(
                 </p>
               )}
 
-              {/* REPLY */}
+              {/* reply button */}
               {currentUser && (
                 <Button
                   variant="ghost"
@@ -210,11 +202,12 @@ const CommentItem = memo(
           </div>
         </Card>
 
-        {/* REPLY FORM */}
+        {/* reply form */}
         {replyingTo === comment.id && (
           <div className="ml-8 mt-2">
             <div className="flex gap-2">
               <Textarea
+                key={comment.id} // prevent remount focus bug
                 placeholder={`Reply to ${comment.username}...`}
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}
@@ -239,7 +232,7 @@ const CommentItem = memo(
           </div>
         )}
 
-        {/* REPLIES */}
+        {/* replies */}
         {comment.replies && comment.replies.length > 0 && (
           <div>
             {comment.replies.map((reply) => (
@@ -273,7 +266,7 @@ const CommentItem = memo(
 
 CommentItem.displayName = "CommentItem";
 
-/* ================= MAIN ================= */
+/* ================= MAIN COMPONENT ================= */
 
 export function Comments({
   comments,
@@ -293,22 +286,55 @@ export function Comments({
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DbComment | null>(null);
 
-  /* BUILD TREE */
-  const buildCommentTree = (list: DbComment[]): DbComment[] => {
-    const map = new Map<number, DbComment>();
-    const roots: DbComment[] = [];
+  // sorting state for parent comments
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
 
-    list.forEach((c) => map.set(c.id, { ...c, replies: [] }));
-    list.forEach((c) => {
+  /* BUILD TREE and SORT PARENTS */
+  const commentTree = useMemo(() => {
+    const map = new Map<number, DbComment & { replies: DbComment[] }>();
+    const roots: (DbComment & { replies: DbComment[] })[] = [];
+
+    comments.forEach((c) => map.set(c.id, { ...c, replies: [] }));
+
+    comments.forEach((c) => {
       const node = map.get(c.id)!;
-      if (c.parent_id === null) roots.push(node);
-      else map.get(c.parent_id!)?.replies?.push(node);
+      if (c.parent_id === null) {
+        roots.push(node);
+      } else {
+        const parent = map.get(c.parent_id);
+        if (parent) {
+          parent.replies.push(node);
+        } else {
+          // fallback if parent missing (treat as root)
+          roots.push(node);
+        }
+      }
+    });
+
+    // sort replies for each parent (ascending: oldest -> newest so conversation reads naturally)
+    map.forEach((node) => {
+      node.replies.sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      );
+    });
+
+    // sort roots (parents) by created_at using sortOrder
+    roots.sort((a, b) => {
+      const ta = new Date(a.created_at).getTime();
+      const tb = new Date(b.created_at).getTime();
+      return sortOrder === "newest" ? tb - ta : ta - tb;
     });
 
     return roots;
-  };
+  }, [comments, sortOrder]);
 
-  const commentTree = buildCommentTree(comments || []);
+  /* ACTIONS */
+  const handleSubmitComment = () => {
+    if (!newComment.trim()) return;
+    onAddComment(newComment, null);
+    setNewComment("");
+  };
 
   const handleSubmitReply = (parentId: number) => {
     if (!replyContent.trim()) return;
@@ -321,63 +347,99 @@ export function Comments({
 
   return (
     <div className="mt-12 border-t border-gray-200 pt-8">
-      <h2 className="text-2xl font-bold mb-6">
-        Comments ({comments?.length || 0})
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-2xl font-bold">
+            Comments ({comments?.length || 0})
+          </h2>
+        </div>
+
+        {/* Sorting control for parent comments */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-600">Sort:</label>
+          <select
+            value={sortOrder}
+            onChange={(e) =>
+              setSortOrder(e.target.value as "newest" | "oldest")
+            }
+            className="px-3 py-1 border rounded bg-white text-sm"
+          >
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+          </select>
+        </div>
+      </div>
 
       {/* ADD COMMENT */}
       {currentUser ? (
-        <Card className="p-4 mb-6">
-          <Textarea
-            placeholder="Share your thoughts..."
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            rows={3}
-          />
-          <Button
-            className="mt-2"
-            onClick={() => {
-              if (!newComment.trim()) return;
-              onAddComment(newComment, null);
-              setNewComment("");
-            }}
-          >
-            <Send className="size-4 mr-2" />
-            Post Comment
-          </Button>
+        <Card className="p-4 mb-6 bg-gradient-to-br from-blue-50 to-purple-50">
+          <div className="flex items-start gap-3">
+            <div className="size-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium">
+              {currentUser.username.charAt(0).toUpperCase()}
+            </div>
+
+            <div className="flex-1 space-y-3">
+              <Textarea
+                placeholder="Share your thoughts..."
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                rows={3}
+              />
+              <Button
+                onClick={handleSubmitComment}
+                disabled={!newComment.trim()}
+                className="gap-2 bg-gradient-to-r from-blue-500 to-purple-600"
+              >
+                <Send className="size-4" />
+                Post Comment
+              </Button>
+            </div>
+          </div>
         </Card>
       ) : (
-        <Card className="p-6 text-center">
-          <UserCircle className="size-12 mx-auto mb-3" />
-          <Button onClick={onLoginPrompt}>Login to Comment</Button>
+        <Card className="p-6 text-center bg-gray-50 mb-6">
+          <UserCircle className="size-12 text-gray-400 mx-auto mb-3" />
+          <p className="text-gray-600 mb-4">Sign in to join the discussion</p>
+          <Button onClick={onLoginPrompt} variant="outline">
+            Login to Comment
+          </Button>
         </Card>
       )}
 
       {/* LIST */}
-      {commentTree.map((comment) => (
-        <CommentItem
-          key={comment.id}
-          comment={comment}
-          depth={0}
-          currentUser={currentUser}
-          replyingTo={replyingTo}
-          setReplyingTo={setReplyingTo}
-          replyContent={replyContent}
-          setReplyContent={setReplyContent}
-          editingId={editingId}
-          setEditingId={setEditingId}
-          editContent={editContent}
-          setEditContent={setEditContent}
-          openMenuId={openMenuId}
-          setOpenMenuId={setOpenMenuId}
-          onSubmitReply={handleSubmitReply}
-          onUpdateComment={onUpdateComment}
-          onAskDelete={setDeleteTarget}
-          formatDate={formatDate}
-        />
-      ))}
+      {commentTree.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          <MessageCircle className="size-12 text-gray-300 mx-auto mb-3" />
+          <p>No comments yet. Be the first!</p>
+        </div>
+      ) : (
+        <div>
+          {commentTree.map((comment) => (
+            <CommentItem
+              key={comment.id}
+              comment={comment}
+              depth={0}
+              currentUser={currentUser}
+              replyingTo={replyingTo}
+              setReplyingTo={setReplyingTo}
+              replyContent={replyContent}
+              setReplyContent={setReplyContent}
+              editingId={editingId}
+              setEditingId={setEditingId}
+              editContent={editContent}
+              setEditContent={setEditContent}
+              openMenuId={openMenuId}
+              setOpenMenuId={setOpenMenuId}
+              onSubmitReply={handleSubmitReply}
+              onUpdateComment={onUpdateComment}
+              onAskDelete={setDeleteTarget}
+              formatDate={formatDate}
+            />
+          ))}
+        </div>
+      )}
 
-      {/* DELETE MODAL */}
+      {/* DELETE CONFIRM */}
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <Card className="p-6 max-w-md w-full">
@@ -406,3 +468,5 @@ export function Comments({
     </div>
   );
 }
+
+export default Comments;
